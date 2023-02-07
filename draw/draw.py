@@ -5,55 +5,68 @@ if True:
   import matplotlib.pyplot as plt
 
 
-def cdf ( series,
+# PITFALL: Does not close the plot to further drawing.
+def cdf ( series : pd.Series,
           logx = False,
-          with_mean = True,
-          with_pdf = False,
+          draw_mean_too = True,
+          draw_pmf_too = False,
           xmin = None,
           xmax = None,
           **kwargs ):
+
   data = pd.DataFrame()
-  data["x"] = pd.Series( sorted(series) )
+  data["x"] = series . sort_values() . astype ( "float" )
   data["count"] = 1
 
-  dmin = data["x"].min()
-  if xmin != None:
-    dmin = max(dmin,xmin)
-  dmax = data["x"].max()
-  if xmax != None:
-    dmax = min(dmax,xmax)
-  dstep = (dmax - dmin) / 500 # this resolution is arbitrary
+  if True: # Define horizontal min, max, and step size.
+    dmin = data["x"].min()
+    if xmin != None:
+      dmin = max(dmin,xmin)
+    dmax = data["x"].max()
+    if xmax != None:
+      dmax = min(dmax,xmax)
+    dstep = (dmax - dmin) / 500 # arbitrary resolution
 
-  pdf = data.groupby("x").agg('sum')
-    # only the nonzero part of the pdf
-  pdf["nonzero_pdf"] = pdf["count"] / pdf["count"].sum()
-  pdf = pdf.reset_index(level="x")
+  pmf = data . groupby("x") . agg('sum')
+    # Taking the sum yields the nonzero part of the pmf.
+  mass = pmf["count"].sum()
+  pmf["nonzero_pmf"] = pmf["count"] / mass
+  pmf = pmf . reset_index ( level="x" )
+    # Move x from the index to a normal column.
 
-  pdf_range = pd.DataFrame()
-  pdf_range["x"] = np.arange( dmin - 10*dstep, dmax + 10*dstep, dstep )
-    # this 10-step (5%) buffer is arbitrary
+  pmf_range = pd.DataFrame()
+  pmf_range["x"] = np.arange (
+    # Includes a 10-step (5%) buffer on each side.
+    dmin - 10*dstep, dmax + 10*dstep, dstep )
 
-  df = pdf_range.merge( pdf, on = "x", how = "outer" )
-  df["pdf"] = np.where( df["nonzero_pdf"].isnull(), 0, df["nonzero_pdf"] )
-    # np.where is like if-else
-  df = df[["x","pdf"]]
+  df = pmf_range.merge(
+    # RELAX. Merging on floats might look crazy,
+    # but in an outer merge, nothing is lost.
+    pmf, on = "x", how = "outer" )
+  df["pmf"] = np.where( # This is like if-else.
+    df["nonzero_pmf"] . isnull(),
+    0,
+    df ["nonzero_pmf"] )
+  df = df[["x","pmf"]] # drop columns "count" and "nonzero_pmf"
   df = df.sort_values("x")
-  df["cdf"] = df["pdf"].cumsum()
+  df["cdf"] = df["pmf"] . cumsum()
 
   if logx:
     plt.xscale("log")
-  if with_pdf: # for insufficiently "lumpy" variables, the pdf is zero almost everywhere
-    plt.plot( df["x"],df["pdf"] )
-  if with_mean:
-    plt.axvline( series.mean() )
-    plt.text( series.mean(), 0,
-              "mean = " + format( series.mean(), '.2e') )
+  if draw_pmf_too:
+    plt.plot( df["x"], df["pmf"] )
+  if draw_mean_too:
+    mu = data["x"] . mean()
+    plt.axvline( mu )
+    plt.text( mu, 0,
+              "mean = " + format( mu, '.2e') )
 
-  plt.gca().set_xlim(left=dmin,right=dmax)
-  plt.plot( df["x"],df["cdf"], **kwargs )
+  plt.gca() . set_xlim ( left = dmin, right = dmax )
+  plt.plot ( df["x"], df["cdf"], **kwargs )
 
+# PITFALL: Does not close the plot to further drawing.
 def single_cdf( series, xlabel, **kwargs ):
-  plt.grid(color='b', linestyle=':', linewidth=0.5)
-  plt.xlabel(xlabel)
-  plt.ylabel("Probability")
+  plt.grid ( color='b', linestyle=':', linewidth=0.5 )
+  plt.xlabel ( xlabel )
+  plt.ylabel ( "Probability" )
   cdf( series, **kwargs )
