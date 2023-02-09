@@ -12,6 +12,7 @@ def cdf ( series : pd.Series,
           draw_pmf_too = False,
           xmin = None,
           xmax = None,
+          sample_size = None,
           **kwargs ):
 
   data = pd.DataFrame()
@@ -60,6 +61,13 @@ def cdf ( series : pd.Series,
     plt.axvline( mu )
     plt.text( mu, 0,
               "mean = " + format( mu, '.2e') )
+  if sample_size:
+    fig, ax = plt.subplots()
+    plt.text ( 0.1, 0.9,
+               "n = " + str(sample_size),
+               # As coordinates, use fractions of axes,
+               # rather than data (which is the default).
+               transform = ax.transAxes )
 
   plt.gca() . set_xlim ( left = dmin, right = dmax )
   plt.plot ( df["x"], df["cdf"], **kwargs )
