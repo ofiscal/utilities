@@ -62,6 +62,7 @@ def cdf ( series : pd.Series,
     plt.text( mu, 0,
               "mean = " + format( mu, '.2e') )
   if sample_size:
+    # TODO: Why does this screw up the mean and the logx scale?
     fig, ax = plt.subplots()
     plt.text ( 0.1, 0.9,
                "n = " + str(sample_size),
